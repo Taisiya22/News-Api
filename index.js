@@ -1,24 +1,30 @@
-import {getNews} from './api.js'
+import {NewsApi} from './api.js'
+import { LoadMoreBtn } from './componenets/loadMoreBtn.js';
 
 const form = document.getElementById("form");
 const list = document.getElementById("articlesWrapper");
+const loadMoreBtn = new LoadMoreBtn({
+  selector: '#loadMoreBtn',
+  isHidden: true
+})
+
+
+// let inputValue = ''; 
+const newsApi = new NewsApi();
+
 form.addEventListener("submit", onSubmit);
+loadMoreBtn.button.addEventListener("click", fetchNews)
 
 function onSubmit(e) {
   e.preventDefault();
-
+  clearNewsList();
+  console.log(newsApi)
+  newsApi.resetPage();
+  loadMoreBtn.show();
   const form = e.currentTarget;
-  const inputValue = form.elements.news.value;
-  console.log("🚀 ~ file: index.js:12 ~ onSubmit ~ inputValue ", inputValue)
-  getNews(inputValue).then(({ articles }) => {
-    if (articles.length === 0) {
-      throw new Error('No data')
-    };
-    return articles.reduce((markup, article) => createMarkup(article) + markup , "")
-  })
-    .then(updateNewsList)
-    .catch(console.error())
-    .finally(() => form.reset())
+   newsApi.searchQuery = form.elements.news.value.trim();
+
+  fetchNews().finally(() => form.reset())
 
   
    }
@@ -36,5 +42,30 @@ function createMarkup({ author, title, description, url, urlToImage }) {
 
 
 function updateNewsList(markup) {
-  list.innerHTML = markup
- }
+  list.insertAdjacentHTML('beforeend', markup)
+}
+ 
+function fetchNews(e) { 
+  loadMoreBtn.disable();
+console.log(newsApi)
+  return newsApi.getNews().then(({ articles }) => {
+    console.log(articles)
+    if (articles.length === 0) throw new Error("No data");
+    return articles.reduce((markup, article) => createMarkup(article) + markup , "")
+  })
+    .then(markup => { 
+      updateNewsList(markup);
+      loadMoreBtn.enable();
+    })
+    .catch(onError)
+    
+}
+
+function onError(err) {
+  console.error(err);
+  updateNewsList("<p>Articles not found</p>");
+}
+
+function clearNewsList() { 
+  list.innerHTML = '';
+}
